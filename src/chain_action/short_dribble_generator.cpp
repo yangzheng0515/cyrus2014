@@ -647,135 +647,149 @@ void ShortDribbleGenerator::createSelfCache(const WorldModel & wm,
  */
 bool ShortDribbleGenerator::checkOpponent(const WorldModel & wm,
 		const Vector2D & ball_trap_pos, const int dribble_step) {
-	const ServerParam & SP = ServerParam::i();
+    const ServerParam & SP = ServerParam::i();
 
-	//const double control_area = SP.tackleDist() - 0.2;
-	const rcsc::AngleDeg ball_move_angle =
-			(ball_trap_pos - M_first_ball_pos).th();
+    //const double control_area = SP.tackleDist() - 0.2;
+    const rcsc::AngleDeg ball_move_angle = ( ball_trap_pos - M_first_ball_pos ).th();
 
-	const PlayerPtrCont::const_iterator o_end = wm.opponentsFromSelf().end();
-	for (PlayerPtrCont::const_iterator o = wm.opponentsFromSelf().begin();
-			o != o_end; ++o) {
-		if ((*o)->distFromSelf() > 20.0)
-			break;
+    const PlayerPtrCont::const_iterator o_end = wm.opponentsFromSelf().end();
+    for ( PlayerPtrCont::const_iterator o = wm.opponentsFromSelf().begin();
+          o != o_end;
+          ++o )
+    {
+        if ( (*o)->distFromSelf() > 20.0 ) break;
 
-		const PlayerType * ptype = (*o)->playerTypePtr();
+        const PlayerType * ptype = (*o)->playerTypePtr();
 
-		const double control_area =
-				((*o)->goalie() && ball_trap_pos.x > SP.theirPenaltyAreaLineX()
-						&& ball_trap_pos.absY() < SP.penaltyAreaHalfWidth()) ?
-						SP.catchableArea() : ptype->kickableArea();
+        const double control_area
+            = ( (*o)->goalie()
+                && ball_trap_pos.x > SP.theirPenaltyAreaLineX()
+                && ball_trap_pos.absY() < SP.penaltyAreaHalfWidth() )
+            ? SP.catchableArea()
+            : ptype->kickableArea();
 
-		const Vector2D opp_pos = (*o)->inertiaPoint(dribble_step);
+        const Vector2D opp_pos = (*o)->inertiaPoint( dribble_step );
 
-		const Vector2D ball_to_opp_rel =
-				((*o)->pos() - M_first_ball_pos).rotatedVector(
-						-ball_move_angle);
+        const Vector2D ball_to_opp_rel = ( (*o)->pos() - M_first_ball_pos ).rotatedVector( -ball_move_angle );
 
-		if (ball_to_opp_rel.x < -4.0) {
+        if ( ball_to_opp_rel.x < -4.0 )
+        {
 #ifdef DEBUG_PRINT_OPPONENT
-			dlog.addText( Logger::DRIBBLE,
-					"%d: opponent[%d](%.2f %.2f) relx=%.2f",
-					M_total_count,
-					(*o)->unum(),
-					(*o)->pos().x, (*o)->pos().y,
-					ball_to_opp_rel.x );
+            dlog.addText( Logger::DRIBBLE,
+                          "%d: opponent[%d](%.2f %.2f) relx=%.2f",
+                          M_total_count,
+                          (*o)->unum(),
+                          (*o)->pos().x, (*o)->pos().y,
+                          ball_to_opp_rel.x );
 #endif
-			continue;
-		}
+            continue;
+        }
 
-		double target_dist = opp_pos.dist(ball_trap_pos);
 
-		if (target_dist - control_area < 0.001) {
+        double target_dist = opp_pos.dist( ball_trap_pos );
+
+        if ( target_dist - control_area < 0.001 )
+        {
 #ifdef DEBUG_PRINT_FAILED_COURSE
-			dlog.addText( Logger::DRIBBLE,
-					"%d: xxx opponent %d(%.1f %.1f) kickable.",
-					M_total_count,
-					(*o)->unum(),
-					(*o)->pos().x, (*o)->pos().y );
-			debug_paint_failed( M_total_count, ball_trap_pos );
+            dlog.addText( Logger::DRIBBLE,
+                          "%d: xxx opponent %d(%.1f %.1f) kickable.",
+                          M_total_count,
+                          (*o)->unum(),
+                          (*o)->pos().x, (*o)->pos().y );
+            debug_paint_failed( M_total_count, ball_trap_pos );
 #endif
-			return false;
-		}
+            return false;
+        }
 
-		//
-		// dash
-		//
+        //
+        // dash
+        //
 
-		double dash_dist = target_dist;
-		dash_dist -= control_area * 0.5;
-		dash_dist -= 0.2;
+        double dash_dist = target_dist;
+        dash_dist -= control_area * 0.5;
+        dash_dist -= 0.2;
 
-		int n_step = ptype->cyruscycle2target(wm, (*o), ball_trap_pos, false,
-				is_pass_drible, 1.3);
+        int n_dash = ptype->cyclesToReachDistance( dash_dist );
 
-		int bonus_step = 0;
+        //
+        // turn
+        //
 
-		if (ball_trap_pos.x < 0.0) {
-			bonus_step += 1;
-		}
+        int n_turn = ( (*o)->bodyCount() > 1
+                       ? 1
+                       : FieldAnalyzer::predict_player_turn_cycle( ptype,
+                                                                   (*o)->body(),
+                                                                   (*o)->vel().r(),
+                                                                   target_dist,
+                                                                   ( ball_trap_pos - opp_pos ).th(),
+                                                                   control_area,
+                                                                   true ) );
 
-		if (ball_trap_pos.x < -20.0) {
-			bonus_step += 1;
-		}
 
-		if ((*o)->isTackling()) {
-			bonus_step = -5;
-		}
-		if (!is_pass_drible) {
+        int n_step = ( n_turn == 0
+                       ? n_turn + n_dash
+                       : n_turn + n_dash + 1 );
 
-			double dif = ((opp_pos - M_first_ball_pos).th()
-					- (M_first_ball_pos - ball_trap_pos).th()).abs();
-			if (dif > 180)
-				dif = 360 - dif;
-			if (dif > 120) {
-				if (ball_to_opp_rel.x > 0.5) {
-					bonus_step += bound(0, (*o)->posCount(), 3);
-				} else {
-					bonus_step += bound(0, (*o)->posCount(), 2);
-				}
-			} else {
-				if (ball_to_opp_rel.x > 0.5) {
-					bonus_step += bound(0, (*o)->posCount(), 6);
-				} else {
-					bonus_step += bound(0, (*o)->posCount(), 3);
-				}
-			}
-		}
+        int bonus_step = 0;
 
-		if (n_step - bonus_step <= dribble_step) {
+        if ( ball_trap_pos.x < 30.0 )
+        {
+            bonus_step += 1;
+        }
+
+        if ( ball_trap_pos.x < 0.0 )
+        {
+            bonus_step += 1;
+        }
+
+        if ( (*o)->isTackling() )
+        {
+            bonus_step = -5;
+        }
+
+        if ( ball_to_opp_rel.x > 0.5 )
+        {
+            bonus_step += bound( 0, (*o)->posCount(), 8 );
+        }
+        else
+        {
+            bonus_step += bound( 0, (*o)->posCount(), 4 );
+        }
+
+        if ( n_step - bonus_step <= dribble_step )
+        {
 #ifdef DEBUG_PRINT_FAILED_COURSE
-			dlog.addText( Logger::DRIBBLE,
-					"%d: xxx opponent %d(%.1f %.1f) can reach."
-					" myStep=%d oppStep=%d(t:%d,d:%d) bonus=%d",
-					M_total_count,
-					(*o)->unum(),
-					(*o)->pos().x, (*o)->pos().y,
-					dribble_step,
-					n_step,
-					n_turn,
-					n_dash,
-					bonus_step );
-			debug_paint_failed( M_total_count, ball_trap_pos );
+            dlog.addText( Logger::DRIBBLE,
+                          "%d: xxx opponent %d(%.1f %.1f) can reach."
+                          " myStep=%d oppStep=%d(t:%d,d:%d) bonus=%d",
+                          M_total_count,
+                          (*o)->unum(),
+                          (*o)->pos().x, (*o)->pos().y,
+                          dribble_step,
+                          n_step,
+                          n_turn,
+                          n_dash,
+                          bonus_step );
+            debug_paint_failed( M_total_count, ball_trap_pos );
 #endif
-			return false;
-		}
+            return false;
+        }
 
 #ifdef DEBUG_PRINT_OPPONENT
-		dlog.addText( Logger::DRIBBLE,
-				"%d: (opponent) myStep=%d opponent[%d](%.1f %.1f)"
-				" dashDist=%.2f oppStep=%d(t:%d,d:%d) bonus=%d",
-				M_total_count,
-				dribble_step,
-				(*o)->unum(),
-				(*o)->pos().x, (*o)->pos().y,
-				dash_dist,
-				n_step,
-				n_turn,
-				n_dash,
-				bonus_step );
+        dlog.addText( Logger::DRIBBLE,
+                      "%d: (opponent) myStep=%d opponent[%d](%.1f %.1f)"
+                      " dashDist=%.2f oppStep=%d(t:%d,d:%d) bonus=%d",
+                      M_total_count,
+                      dribble_step,
+                      (*o)->unum(),
+                      (*o)->pos().x, (*o)->pos().y,
+                      dash_dist,
+                      n_step,
+                      n_turn,
+                      n_dash,
+                      bonus_step );
 #endif
-	}
+    }
 
-	return true;
+    return true;
 }

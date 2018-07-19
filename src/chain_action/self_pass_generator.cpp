@@ -596,20 +596,26 @@ bool SelfPassGenerator::checkOpponent(const WorldModel & wm, const int n_turn,
 		dash_dist -= 0.2;
 		dash_dist -= (*o)->distFromSelf() * 0.01;
 
-		int opp_n_dash = ptype->cyruscycle2target(wm, (*o), receive_pos, false,
-				is_pass, 1.2, (kick_bonus_self ? 1 : 0)); //cyclesToReachDistance( dash_dist );
+//		int opp_n_dash = ptype->cyruscycle2target(wm, (*o), receive_pos, false,
+//				is_pass, 1.2, (kick_bonus_self ? 1 : 0)); //cyclesToReachDistance( dash_dist );
 
-//        int opp_n_turn = ( (*o)->bodyCount() > 1
-//                           ? 0
-//                           : FieldAnalyzer::predict_player_turn_cycle( ptype,
-//                                                                       (*o)->body(),
-//                                                                       ovel.r(),
-//                                                                       target_dist,
-//                                                                       ( receive_pos - opp_pos ).th(),
-//                                                                       control_area,
-//                                                                       false ) );
+        int opp_n_dash = ptype->cyclesToReachDistance( dash_dist );
 
-		int opp_n_step = opp_n_dash;
+
+        int opp_n_turn = ( (*o)->bodyCount() > 1
+                           ? 0
+                           : FieldAnalyzer::predict_player_turn_cycle( ptype,
+                                                                       (*o)->body(),
+                                                                       ovel.r(),
+                                                                       target_dist,
+                                                                       ( receive_pos - opp_pos ).th(),
+                                                                       control_area,
+                                                                       false ) );
+
+        //int opp_n_step = opp_n_dash;
+        int opp_n_step = ( opp_n_turn == 0
+                           ? opp_n_turn + opp_n_dash
+                           : opp_n_turn + opp_n_dash + 1 );
 		int bonus_step = 0;
 
 		if (receive_pos.x < 10.0) {

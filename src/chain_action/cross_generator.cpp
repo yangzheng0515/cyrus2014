@@ -454,8 +454,8 @@ CrossGenerator::createCross( const WorldModel & wm,
                 continue;
             }
 
-            const int receiver_step =ptype->cyruscycle2target(wm,receiver,receive_point,true,false,1.0,0,true) + 1;// ptype->cyclesToReachDistance( sub_dist ) + 1;
-
+            //const int receiver_step =ptype->cyruscycle2target(wm,receiver,receive_point,true,false,1.0,0,true) + 1;// ptype->cyclesToReachDistance( sub_dist ) + 1;
+            const int receiver_step = ptype->cyclesToReachDistance( sub_dist ) + 1;
             //
             // step loop
             //
@@ -686,7 +686,8 @@ CrossGenerator::checkOpponent( const Vector2D & first_ball_pos,
             // dash
             //
 
-            int n_dash = ptype->cyruscycle2target(wm,(*o),ball_pos,false,false,1.0,0,true);//ptype->cyclesToReachDistance( dash_dist * 1.05 ); // add penalty
+            //int n_dash = ptype->cyruscycle2target(wm,(*o),ball_pos,false,false,1.0,0,true);//ptype->cyclesToReachDistance( dash_dist * 1.05 ); // add penalty
+            int n_dash = ptype->cyclesToReachDistance( dash_dist * 1.05 ); // add penalty
 
             if ( n_dash > cycle )
             {

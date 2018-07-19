@@ -1550,11 +1550,16 @@ StrictCheckPassGenerator::predictReceiverReachStep( const WorldModel & wm,
             n_turn += 1;
         }
     }
-    int n_dash = ptype->cyruscycle2target(wm,receiver.player_,pos,true,true,1.3);//cyclesToReachDistance( dash_dist );
+    //int n_dash = ptype->cyruscycle2target(wm,receiver.player_,pos,true,true,1.3);//cyclesToReachDistance( dash_dist );
 
-    return n_dash;/*( n_turn == 0
+    int n_dash = ptype->cyclesToReachDistance( dash_dist );
+
+    return ( n_turn == 0
              ? n_turn + n_dash
-             : n_turn + n_dash + 1 ); // 1 step penalty for observation delay.*/
+             : n_turn + n_dash + 1 ); // 1 step penalty for observation delay.
+//    return n_dash;/*( n_turn == 0
+//             ? n_turn + n_dash
+//             : n_turn + n_dash + 1 ); // 1 step penalty for observation delay.*/
 }
 
 /*-------------------------------------------------------------------*/
@@ -1684,7 +1689,8 @@ min_cycle-=2;
         // dash
         //
 
-        int n_dash = (wm.self().isKickable()?ptype->cyruscycle2target(wm,opponent.player_,ball_pos,false,true,1.1,kick_count):ptype->cyclesToReachDistance( dash_dist ));
+        int n_dash = ptype->cyclesToReachDistance( dash_dist );
+        //int n_dash = (wm.self().isKickable()?ptype->cyruscycle2target(wm,opponent.player_,ball_pos,false,true,1.1,kick_count):ptype->cyclesToReachDistance( dash_dist ));
 
         if(M_passer->unum()!=wm.self().unum())
         	n_dash += 3;
